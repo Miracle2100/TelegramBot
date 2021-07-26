@@ -8,6 +8,7 @@ public class MainClass{
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
             telegramBotsApi.registerBot(new CurrencyChHisBot());
         } catch (TelegramApiException e) {
+
             e.printStackTrace();
         }
     }

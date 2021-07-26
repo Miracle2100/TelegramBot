@@ -14,13 +14,19 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.Math.toIntExact;
 
 
-public class CurrencyChHisBot extends TelegramLongPollingBot{
+public class CurrencyChHisBot extends TelegramLongPollingBot {
+
+    static final String DB_URL = "jdbc:mysql://localhost:3306/spring-web-blog?autoReconnect=true&useSSL=false";
+    static final String USER = "root";
+    static final String PASS = "";
+
     @Override
     public String getBotUsername() {
         return "CurrencyChHis_bot";
@@ -43,11 +49,11 @@ public class CurrencyChHisBot extends TelegramLongPollingBot{
         try {
             setButtons(sendMessage);
             execute(sendMessage);
-        }
-        catch (TelegramApiException e) {
+        } catch (TelegramApiException e) {
             e.printStackTrace();
         }
     }
+
     public void setButtons(SendMessage sendMessage) {
         ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
         sendMessage.setReplyMarkup(replyKeyboardMarkup);
@@ -76,7 +82,7 @@ public class CurrencyChHisBot extends TelegramLongPollingBot{
     @Override
     public void onUpdateReceived(Update update) {
         Message message = update.getMessage();
-        if(message != null && message.hasText()) {
+        if (message != null && message.hasText()) {
             switch (message.getText()) {
                 case "/start":
                     sendMsg(message, "Press the buttons below");
@@ -110,35 +116,39 @@ public class CurrencyChHisBot extends TelegramLongPollingBot{
         String result = "";
         Document doc = null;
 
-        try {
-            if(button == "USD") {
-                doc = Jsoup.connect("https://ru.exchange-rates.org/history/KZT/USD/T/").get();
-            }
-            else if (button == "RUB") {
-                doc = Jsoup.connect("https://ru.exchange-rates.org/history/KZT/RUB/T/").get();
-            }
-            else {
-                doc = Jsoup.connect("https://ru.exchange-rates.org/history/KZT/EUR/T/").get();
-            }
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
+             Statement stmt = conn.createStatement();
+        ) {
+            if (button == "USD") {
+                ResultSet rs = stmt.executeQuery("SELECT date, cost, day_name FROM USD");
 
-            int day = 0;
-            for (Element table : doc.select("table[class=table table-striped table-hover table-hover-solid-row table-simple history-data]")) {
-                for (Element row : table.select("tr")) {
-                    Elements tds = row.select("td");
-                    if (tds.isEmpty()) { // Header <tr> with only <th>s
-                        continue;
-                    }
+                while (rs.next()) {
 
-                    System.out.println(tds.get(0).text() + "->" + tds.get(1).text() +  "->" + tds.get(2).text() +  "->" + tds.get(3).text());
-                    result += "<b>" + tds.get(0).text() + "</b>" + " - " + tds.get(2).text() + '\n' + tds.get(1).text() + '\n' +'\n';
-                    day++;
-                    if(day == 10) {
-                        return result;
-                    }
+                    result += "<b>" + rs.getString("date") + "</b>" + " - " + rs.getString("cost") + '\n' + rs.getString("day_name") + '\n' + '\n';
                 }
+
+                return result;
+            } else if (button == "RUB") {
+                ResultSet rs = stmt.executeQuery("SELECT date, cost, day_name FROM RUB");
+
+                while (rs.next()) {
+
+                    result += "<b>" + rs.getString("date") + "</b>" + " - " + rs.getString("cost") + '\n' + rs.getString("day_name") + '\n' + '\n';
+                }
+
+                return result;
+            } else {
+                ResultSet rs = stmt.executeQuery("SELECT date, cost, day_name FROM EUR");
+
+                while (rs.next()) {
+
+                    result += "<b>" + rs.getString("date") + "</b>" + " - " + rs.getString("cost") + '\n' + rs.getString("day_name") + '\n' + '\n';
+                }
+
+                return result;
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
         }
 
         return "";
