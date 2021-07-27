@@ -1,4 +1,8 @@
-import com.fasterxml.jackson.jaxrs.json.annotation.JSONP;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -14,18 +18,23 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
+import java.util.stream.Collectors;
 
+import static java.lang.Math.abs;
 import static java.lang.Math.toIntExact;
 
 
 public class CurrencyChHisBot extends TelegramLongPollingBot {
 
-    static final String DB_URL = "jdbc:mysql://localhost:3306/spring-web-blog?autoReconnect=true&useSSL=false";
-    static final String USER = "root";
-    static final String PASS = "";
 
     @Override
     public String getBotUsername() {
@@ -79,6 +88,14 @@ public class CurrencyChHisBot extends TelegramLongPollingBot {
 
     }
 
+
+    public String getString(String cur) throws IOException {
+        String currentPath = System.getProperty("user.dir");
+        String content = Files.lines(Paths.get(currentPath + "/src/main/currency/" + cur), StandardCharsets.UTF_8).collect(Collectors.joining(System.lineSeparator()));
+        System.out.println(content);
+        return content;
+    }
+
     @Override
     public void onUpdateReceived(Update update) {
         Message message = update.getMessage();
@@ -89,68 +106,26 @@ public class CurrencyChHisBot extends TelegramLongPollingBot {
                     break;
                 case "USD->KZT":
                     try {
-                        sendMsg(message, f("USD"));
+                        sendMsg(message, getString("USD.txt"));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                     break;
                 case "EUR->KZT":
                     try {
-                        sendMsg(message, f("EUR"));
+                        sendMsg(message, getString("EUR.txt"));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                     break;
                 case "RUB->KZT":
                     try {
-                        sendMsg(message, f("RUB"));
+                        sendMsg(message, getString("RUB.txt"));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                     break;
             }
         }
-    }
-
-    public String f(String button) throws IOException {
-        String result = "";
-        Document doc = null;
-
-        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-             Statement stmt = conn.createStatement();
-        ) {
-            if (button == "USD") {
-                ResultSet rs = stmt.executeQuery("SELECT date, cost, day_name FROM USD");
-
-                while (rs.next()) {
-
-                    result += "<b>" + rs.getString("date") + "</b>" + " - " + rs.getString("cost") + '\n' + rs.getString("day_name") + '\n' + '\n';
-                }
-
-                return result;
-            } else if (button == "RUB") {
-                ResultSet rs = stmt.executeQuery("SELECT date, cost, day_name FROM RUB");
-
-                while (rs.next()) {
-
-                    result += "<b>" + rs.getString("date") + "</b>" + " - " + rs.getString("cost") + '\n' + rs.getString("day_name") + '\n' + '\n';
-                }
-
-                return result;
-            } else {
-                ResultSet rs = stmt.executeQuery("SELECT date, cost, day_name FROM EUR");
-
-                while (rs.next()) {
-
-                    result += "<b>" + rs.getString("date") + "</b>" + " - " + rs.getString("cost") + '\n' + rs.getString("day_name") + '\n' + '\n';
-                }
-
-                return result;
-            }
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
-        }
-
-        return "";
     }
 }
